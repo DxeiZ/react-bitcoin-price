@@ -13,6 +13,23 @@ function dataReducer(state = null, action) {
   }
 }
 
+const updateDataMiddleware = store => next => action => {
+  if (action.type === 'START_UPDATE_DATA') {
+    setInterval(() => {
+      fetchData()
+        .then(newData => {
+          const { id, symbol, name, priceUsd } = newData;
+          store.dispatch({ type: 'START_UPDATE_DATA', newData: { id, symbol, name, priceUsd } });
+        })
+        .catch(error => {
+          console.log(error);
+        });
+    }, 5000);
+  }
+  
+  return next(action);
+};
+
 const store = createStore(dataReducer);
 
 async function fetchData() {
@@ -21,22 +38,17 @@ async function fetchData() {
   const btcData = assets.find(asset => asset.id === 'bitcoin');
   if (btcData) {
     const { id, symbol, name, priceUsd } = btcData;
-    store.dispatch({ type: 'UPDATE_DATA', newData: { id, symbol, name, priceUsd } });
+    store.dispatch({ type: 'START_UPDATE_DATA', newData: { id, symbol, name, priceUsd } });
   }
   return btcData;
 }
 
-function App({ todos }) {
-  const handleUpdateData = async () => {
+updateDataMiddleware()
+
+function updateDataPeriodically() {
+  setInterval(async () => {
     try {
       await fetchData().then(response => {
-        document.getElementById('updater').innerHTML = `<span class="loading loading-spinner"></span>`
-        const buttonElement = document.getElementById('updater');
-        buttonElement.disabled = true;
-        setInterval(() => {
-          document.getElementById('updater').innerHTML = `Veriyi Güncelle`
-          buttonElement.disabled = false;
-        }, 3000);
         document.getElementById('symbol').textContent = response.symbol;
         document.getElementById('name').textContent = response.name;
         document.getElementById('priceUsd').textContent = `${parseFloat(response.priceUsd).toFixed(1)}$`;
@@ -44,8 +56,12 @@ function App({ todos }) {
     } catch (error) {
       console.log(error);
     }
-  };
+  }, 1000); // Örnekte her 1 dakikada bir güncelleme yapılıyor
+}
 
+updateDataPeriodically(); 
+
+function App({ todos }) {
   return (
     <div className="App">
       {todos && todos.map((todo) => (
@@ -68,10 +84,6 @@ function App({ todos }) {
             <div className="stat-value text-primary"><span id='priceUsd'>{parseFloat(todo.priceUsd).toFixed(1)}$</span></div>
             <div className="stat-desc">Bitcoin'in, dolar karşısındaki para birimi.</div>
           </div>
-            
-          <span className="indicator-item indicator-bottom indicator-center badge bg-transparent" key={Math.floor(Math.random() * 1000)}>
-            <button id='updater' className="mt-5 btn btn-primary btn-wide" onClick={handleUpdateData}>Veriyi Güncelle</button>
-          </span>
           </div>
       </div>
       ))}
